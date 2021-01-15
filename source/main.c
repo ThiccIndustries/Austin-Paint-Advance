@@ -47,7 +47,13 @@ int main()
 
     REG_DISPCNT = DCNT_MODE3 | DCNT_BG2;
 
-    m3_fill(RGB15(7, 7, 7));
+    //Draw borders
+    m3_fill(RGB15(2, 2, 2));
+    m3_rect(0, 0, 132, 144, RGB15(7,7,7)); //Bitmap border
+    m3_rect(0, 0, 128, 140, RGB15(2,2,2)); //Bitmap border
+
+    m3_rect(128, 0, 240, 80, RGB15(7,7,7));
+    m3_rect(132, 0, 240, 76, RGB15(2,2,2));
 
     //Fill and display bitmap
     for (int x = 0; x < 32; x++)
@@ -63,6 +69,7 @@ int main()
     for (int i = 0; i < 16; i++)
     {
         draw_pal_pxl(i, palette);
+        draw_pal_select(i, RGB15(7, 7, 7));
     }
 
     //Draw palette edit
@@ -82,7 +89,7 @@ int main()
         if (key_hit(KEY_L))
         {
             draw_pal_select(selectedIndex, RGB15(7, 7, 7));
-            selectedIndex--;
+            selectedIndex = clampi(selectedIndex - 1, 0, 15);
             draw_grad_value(0, palette, selectedIndex);
             draw_grad_value(1, palette, selectedIndex);
             draw_grad_value(2, palette, selectedIndex);
@@ -91,13 +98,13 @@ int main()
         if (key_hit(KEY_R))
         {
             draw_pal_select(selectedIndex, RGB15(7, 7, 7));
-            selectedIndex++;
+            selectedIndex = clampi(selectedIndex + 1, 0, 15);   
             draw_grad_value(0, palette, selectedIndex);
             draw_grad_value(1, palette, selectedIndex);
             draw_grad_value(2, palette, selectedIndex);
         }
 
-        selectedIndex = clampi(selectedIndex, 0, 15);
+        
 
         draw_pal_select(selectedIndex, RGB15(31, 31, 31));
 

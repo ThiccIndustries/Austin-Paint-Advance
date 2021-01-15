@@ -2,7 +2,8 @@
 #define PXL_SCALE 4
 #define BMP_OFFSET 0
 #define PAL_OFFSET 32 * PXL_SCALE
-#define COL_OFFSET 3 * PXL_SCALE
+#define COL_OFFSET (3 * PXL_SCALE) - 4
+#define COL_OFFSET_X 10
 
 
 void draw_pxl(int pxlx, int pxly, int bitmap[32][32], COLOR palette[16]);
@@ -77,7 +78,7 @@ void draw_grad(int channel)
     {
         for (int y = 0; y < PXL_SCALE * 3; y++)
         {
-            int xcoord = BMP_OFFSET + (32 * PXL_SCALE) + x + 8;
+            int xcoord = BMP_OFFSET + (32 * PXL_SCALE) + x + COL_OFFSET_X;
             int ycoord = y + (channel * PXL_SCALE * 6) + COL_OFFSET;
 
             switch (channel)
@@ -104,16 +105,16 @@ void draw_grad_value(int channel, COLOR palette[16], int index)
     int grn = (palette[index] & 0x03E0) >> 5;
     int red = (palette[index] & 0x001F);
 
-    int x1 = BMP_OFFSET + (32 * PXL_SCALE) + 8;
+    int x1 = BMP_OFFSET + (32 * PXL_SCALE) + COL_OFFSET_X;
     int x2 = x1 + 32 * 3;
 
     int y1 = (channel * PXL_SCALE * 6) + (3 * PXL_SCALE) + COL_OFFSET;
-    int y2 = (channel * PXL_SCALE * 6) + (6 * PXL_SCALE) + COL_OFFSET;
+    int y2 = y1 + 3;
 
-    m3_rect(x1, y1, x2, y2, RGB15(7, 7, 7));
+    m3_rect(x1, y1, x2, y2, RGB15(4, 4, 4));
 
     //this is gross
-    x1 = BMP_OFFSET + (32 * PXL_SCALE) + 8;
+    x1 = BMP_OFFSET + (32 * PXL_SCALE) + COL_OFFSET_X;
 
     switch (channel)
     {
@@ -129,20 +130,19 @@ void draw_grad_value(int channel, COLOR palette[16], int index)
     }
 
     x2 = x1 + 3;
-    y2 -= 6;
 
     m3_rect(x1, y1, x2, y2, RGB15(31, 31, 31));
 }
 
 void draw_grad_sel(int channel)
 {
-    int x1 = BMP_OFFSET + (32 * PXL_SCALE) + 5;
+    int x1 = BMP_OFFSET + (32 * PXL_SCALE) + 7;
     int x2 = x1 + 3;
 
     int y1 = COL_OFFSET;
-    int y2 = (18 * PXL_SCALE) + COL_OFFSET;
+    int y2 = (18 * PXL_SCALE) + COL_OFFSET - 6;
 
-    m3_rect(x1, y1, x2, y2, RGB15(7, 7, 7));
+    m3_rect(x1, y1, x2, y2, RGB15(2, 2, 2));
 
     y1 = (channel * PXL_SCALE * 6) + COL_OFFSET;
     y2 = y1 + (3 * PXL_SCALE);
