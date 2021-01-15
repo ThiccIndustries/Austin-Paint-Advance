@@ -38,7 +38,7 @@ COLOR palette[16];
 bool blink;
 bool colormode;
 
-#define GAMEPAK_RAM ((u8*)0x0E000000)
+#define GAMEPAK_RAM ((u8 *)0x0E000000)
 
 int main()
 {
@@ -49,16 +49,16 @@ int main()
 
     //Draw borders
     m3_fill(RGB15(2, 2, 2));
-    m3_rect(0, 0, 132, 144, RGB15(7,7,7)); //Bitmap border
-    m3_rect(0, 0, 128, 140, RGB15(2,2,2)); //Bitmap border
+    m3_rect(0, 0, 132, 144, RGB15(7, 7, 7)); //Bitmap border
+    m3_rect(0, 0, 128, 140, RGB15(2, 2, 2)); //Bitmap border
 
-    m3_rect(128, 0, 240, 80, RGB15(7,7,7));
-    m3_rect(132, 0, 240, 76, RGB15(2,2,2));
+    m3_rect(128, 0, 240, 80, RGB15(7, 7, 7));
+    m3_rect(132, 0, 240, 76, RGB15(2, 2, 2));
 
     //Fill and display bitmap
-    for (int x = 0; x < 32; x++)
+    for (int y = 0; y < 32; y++)
     {
-        for (int y = 0; y < 32; y++)
+        for (int x = 0; x < 32; x++)
         {
             bitmap[x][y] = 0;
             draw_pxl(x, y, bitmap, palette);
@@ -98,13 +98,11 @@ int main()
         if (key_hit(KEY_R))
         {
             draw_pal_select(selectedIndex, RGB15(7, 7, 7));
-            selectedIndex = clampi(selectedIndex + 1, 0, 15);   
+            selectedIndex = clampi(selectedIndex + 1, 0, 15);
             draw_grad_value(0, palette, selectedIndex);
             draw_grad_value(1, palette, selectedIndex);
             draw_grad_value(2, palette, selectedIndex);
         }
-
-        
 
         draw_pal_select(selectedIndex, RGB15(31, 31, 31));
 
@@ -117,55 +115,59 @@ int main()
             input_bitmap();
         }
 
-        if(key_hit(KEY_START))
+        if (key_hit(KEY_START))
             save(palette, bitmap);
-        
-        if(key_hit(KEY_SELECT))
+
+        if (key_hit(KEY_SELECT))
             load();
     }
 
     return 0;
 }
 
-
 //no matter how much i use C, just up and writing to memory never sits right
-void save(COLOR palette[16], int bitmap[32][32]){
+void save(COLOR palette[16], int bitmap[32][32])
+{
     u8 *pSaveMemory = GAMEPAK_RAM;
 
     //Write austin paint header
     char header[16] = {0x41, 0x55, 0x53, 0x54, 0x49, 0x4E, 0x50, 0x41, 0x49, 0x4E, 0x54, 0x00, 0x56, 0x32, 0x2E, 0x30};
-    for(int i = 0; i < 16; i++){
+    for (int i = 0; i < 16; i++)
+    {
         pSaveMemory[i] = header[i];
     }
     //save palette
-    for(int i = 0; i < 16 * 3; i += 3){
+    for (int i = 0; i < 16 * 3; i += 3)
+    {
         int blu = expandRange((palette[i / 3] & 0x7C00) >> 10);
         int grn = expandRange((palette[i / 3] & 0x03E0) >> 5);
         int red = expandRange((palette[i / 3] & 0x001F));
 
         //Make compadible with AP2 color space
-        pSaveMemory[i + 16]      = red;
-        pSaveMemory[i + 16 + 1]  = grn;
-        pSaveMemory[i + 16 + 2]  = blu;
+        pSaveMemory[i + 16] = red;
+        pSaveMemory[i + 16 + 1] = grn;
+        pSaveMemory[i + 16 + 2] = blu;
     }
 
-    for(int y = 0; y < 32; y++){
-        for(int x = 0; x < 16; x++){
+    for (int y = 0; y < 32; y++)
+    {
+        for (int x = 0; x < 16; x++)
+        {
             int index = (y * 16) + x + (16 * 4);
 
             char topPixel = bitmap[x * 2][y] << 4;
             char bottomPixel = bitmap[(x * 2) + 1][y];
-            pSaveMemory[ index ] = topPixel + bottomPixel;
+            pSaveMemory[index] = topPixel + bottomPixel;
         }
     }
-
 }
 
-
-void load(){
+void load()
+{
     u8 *pSaveMemory = GAMEPAK_RAM;
 
-    for(int i = 0; i < 16 * 3; i += 3){
+    for (int i = 0; i < 16 * 3; i += 3)
+    {
         palette[i / 3] = RGB15(0, 0, 0);
 
         int red = constrictRange(pSaveMemory[i + 16]);
@@ -179,12 +181,14 @@ void load(){
         draw_grad_value(2, palette, i / 3);
     }
 
-    for(int y = 0; y < 32; y++){
-        for(int x = 0; x < 16; x++){
+    for (int y = 0; y < 32; y++)
+    {
+        for (int x = 0; x < 16; x++)
+        {
             int paletteIndex = (y * 16) + x + (4 * 16);
 
-            int topPixel = (pSaveMemory[ paletteIndex ] & 0xF0) >> 4;
-            int botPixel = (pSaveMemory[ paletteIndex ] & 0x0F);
+            int topPixel = (pSaveMemory[paletteIndex] & 0xF0) >> 4;
+            int botPixel = (pSaveMemory[paletteIndex] & 0x0F);
 
             bitmap[x * 2][y] = topPixel;
             bitmap[(x * 2) + 1][y] = botPixel;
@@ -193,7 +197,6 @@ void load(){
             draw_pxl((x * 2) + 1, y, bitmap, palette);
         }
     }
-    
 }
 
 //IRQ Handler, the only enabled interupt is vblank so this is fine
@@ -258,21 +261,23 @@ void input_color(void)
         draw_grad_sel(selectedChannel);
     }
 
-    if(key_hit(KEY_LEFT)){
+    if (key_hit(KEY_LEFT))
+    {
         int blu = (palette[selectedIndex] & 0x7C00) >> 10;
         int grn = (palette[selectedIndex] & 0x03E0) >> 5;
         int red = (palette[selectedIndex] & 0x001F);
 
-        switch(selectedChannel){
-            case 0:
-                red = clampi(red - 1, 0, 31);
-                break;
-            case 1:
-                grn = clampi(grn - 1, 0, 31);
-                break;
-            case 2:
-                blu = clampi(blu - 1, 0, 31);
-                break;                               
+        switch (selectedChannel)
+        {
+        case 0:
+            red = clampi(red - 1, 0, 31);
+            break;
+        case 1:
+            grn = clampi(grn - 1, 0, 31);
+            break;
+        case 2:
+            blu = clampi(blu - 1, 0, 31);
+            break;
         }
 
         palette[selectedIndex] = RGB15(red, grn, blu);
@@ -280,21 +285,23 @@ void input_color(void)
         draw_pal_pxl(selectedIndex, palette);
     }
 
-    if(key_hit(KEY_RIGHT)){
+    if (key_hit(KEY_RIGHT))
+    {
         int blu = (palette[selectedIndex] & 0x7C00) >> 10;
         int grn = (palette[selectedIndex] & 0x03E0) >> 5;
         int red = (palette[selectedIndex] & 0x001F);
 
-        switch(selectedChannel){
-            case 0:
-                red = clampi(red + 1, 0, 31);
-                break;
-            case 1:
-                grn = clampi(grn + 1, 0, 31);
-                break;
-            case 2:
-                blu = clampi(blu + 1, 0, 31);
-                break;                               
+        switch (selectedChannel)
+        {
+        case 0:
+            red = clampi(red + 1, 0, 31);
+            break;
+        case 1:
+            grn = clampi(grn + 1, 0, 31);
+            break;
+        case 2:
+            blu = clampi(blu + 1, 0, 31);
+            break;
         }
 
         palette[selectedIndex] = RGB15(red, grn, blu);
@@ -302,9 +309,12 @@ void input_color(void)
         draw_pal_pxl(selectedIndex, palette);
     }
 
-    if(key_hit(KEY_B)){
-        for(int x = 0; x < 32; x++){
-            for(int y = 0; y < 32; y++){
+    if (key_hit(KEY_B))
+    {
+        for (int x = 0; x < 32; x++)
+        {
+            for (int y = 0; y < 32; y++)
+            {
                 draw_pxl(x, y, bitmap, palette);
             }
         }
@@ -338,7 +348,8 @@ void input_bitmap(void)
     if (key_is_down(KEY_LEFT))
         cur_dx = -1;
 
-    if(key_hit(KEY_B)){
+    if (key_hit(KEY_B))
+    {
         colormode = true;
     }
 }
@@ -347,7 +358,6 @@ void input_bitmap(void)
 void input_color_vblank(void)
 {
 }
-
 
 //This runs on every new frame
 void input_bitmap_vblank(void)
@@ -393,13 +403,14 @@ int clampi(int value, int min, int max)
     return value;
 }
 
-
 //Expand the [0, 31] color channel range to the [0, 255] range used by the Austin Paint 2 standard
-int expandRange(int bitvalue){
+int expandRange(int bitvalue)
+{
     return bitvalue == 0 ? 0 : ((bitvalue + 1) * 8) - 1;
 }
 
 //Constrict the [0, 255] color channel range of Austin Paint 2 to the [0, 31] range used by Austin Paint Advance
-int constrictRange(int bitvalue){
+int constrictRange(int bitvalue)
+{
     return bitvalue == 0 ? 0 : ((bitvalue + 1) / 8) - 1;
 }
