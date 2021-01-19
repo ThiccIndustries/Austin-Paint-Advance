@@ -1,10 +1,10 @@
 /*
 Warning: 
-This code is held together with nothing but off-brand clear tape 
-and my desire to finish this stupid joke.
+This code is held together with nothing but off-brand clear tape and my desire to finish this stupid joke.
+If you have a stroke from reading the code, its your own fault.
 
 Licensed under the: do-whatever-you-want-I-dont-care licence
-2020 Thicc Industries.
+2021 Thicc Industries.
 */
 
 #include "draw.h"
@@ -15,13 +15,13 @@ Licensed under the: do-whatever-you-want-I-dont-care licence
 int frame; //Technically a frame counter, but gets reset a lot
 
 int cur_x = 0;  //Cursor position on the bitmap
-int cur_y = 0;  /*---------------------------*/
+int cur_y = 0;  //-----------------------------
 
 int selectedIndex = 0;      //Selected color in the palette. [0, 15]
 int selectedChannel = 0;    //Selected channel for colors.   [0, 3]
 
 int cur_dx; //How many spaces to move the cursor on the next MOVE_RATE 
-int cur_dy; /*------------------------------------------------------*/
+int cur_dy; //--------------------------------------------------------
 
 int chan_dv; //How many spaces to move the channel on the next MOVE_RATE
 
