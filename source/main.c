@@ -1,28 +1,6 @@
-/*Massive spaghetti dont read*/
-
-#include <tonc.h>
-#include <stdio.h>
-#include <stdlib.h>
+/*Massive spaghetti dont read, if you want *real* comments, look in the header files*/
 #include "draw.h"
-
-#define BLINK_RATE 30
-#define MOVE_RATE 10
-
-int clampi(int value, int min, int max);
-int expandRange(int bitvalue);
-int constrictRange(int bitvalue);
-
-void on_irq(void);
-void init_color_palette(void);
-void init_vblank_irq(void);
-
-void input_bitmap(void);
-void input_color(void);
-void input_bitmap_vblank(void);
-void input_color_vblank(void);
-
-void save(COLOR palette[16], int bitmap[32][32]);
-void load(void);
+#include "main.h"
 
 int frame;
 
@@ -117,7 +95,28 @@ int main()
             save(palette, bitmap);
 
         if (key_hit(KEY_SELECT))
-            load();
+        {
+            APFILE *loadedFile = load();
+
+            for (int i = 0; i < 16; i++)
+            {
+                palette[i] = loadedFile -> palette[i];
+                draw_pal_pxl(i, palette);
+            }
+
+            for (int i = 0; i < 32 * 32; i++)
+            {
+                bitmap[i % 32][i / 32] = loadedFile -> bitmap[i % 32][i / 32];
+                draw_pxl(i % 32, i / 32, bitmap, palette);
+            }
+
+            //Refresh color value preview
+            draw_grad_value(0, loadedFile->palette, selectedIndex);
+            draw_grad_value(1, loadedFile->palette, selectedIndex);
+            draw_grad_value(2, loadedFile->palette, selectedIndex);
+
+            free(loadedFile);
+        }
     }
 
     return 0;
@@ -138,9 +137,9 @@ void save(COLOR palette[16], int bitmap[32][32])
     //save palette
     for (int i = 0; i < 16 * 3; i += 3)
     {
-        int blu = expandRange((palette[i / 3] & 0x7C00) >> 10);
-        int grn = expandRange((palette[i / 3] & 0x03E0) >> 5);
-        int red = expandRange((palette[i / 3] & 0x001F));
+        int blu = expand_range((palette[i / 3] & 0x7C00) >> 10);
+        int grn = expand_range((palette[i / 3] & 0x03E0) >> 5);
+        int red = expand_range((palette[i / 3] & 0x001F));
 
         //Make compadible with AP2 color space
         pSaveMemory[i + 16] = red;
@@ -161,21 +160,22 @@ void save(COLOR palette[16], int bitmap[32][32])
     }
 }
 
-void load()
+APFILE* load()
 {
     //Save memory location
     u8 *pSaveMemory = ((u8 *)0x0E000000);
 
+    APFILE *loadedFile = malloc(sizeof(APFILE));
+
     for (int i = 0; i < 16 * 3; i += 3)
     {
-        palette[i / 3] = RGB15(0, 0, 0);
+        loadedFile -> palette[i / 3] = RGB15(0, 0, 0);
 
-        int red = constrictRange(pSaveMemory[i + 16]);
-        int grn = constrictRange(pSaveMemory[i + 16 + 1]);
-        int blu = constrictRange(pSaveMemory[i + 16 + 2]);
+        int red = constrict_range(pSaveMemory[i + 16]);
+        int grn = constrict_range(pSaveMemory[i + 16 + 1]);
+        int blu = constrict_range(pSaveMemory[i + 16 + 2]);
 
-        palette[i / 3] = RGB15(red, grn, blu);
-        draw_pal_pxl(i / 3, palette);
+        loadedFile -> palette[i / 3] = RGB15(red, grn, blu);
     }
 
     for (int y = 0; y < 32; y++)
@@ -187,18 +187,12 @@ void load()
             int topPixel = (pSaveMemory[paletteIndex] & 0xF0) >> 4;
             int botPixel = (pSaveMemory[paletteIndex] & 0x0F);
 
-            bitmap[x * 2][y] = topPixel;
-            bitmap[(x * 2) + 1][y] = botPixel;
-
-            draw_pxl(x * 2, y, bitmap, palette);
-            draw_pxl((x * 2) + 1, y, bitmap, palette);
+            loadedFile -> bitmap[x * 2][y] = topPixel;
+            loadedFile -> bitmap[(x * 2) + 1][y] = botPixel;
         }
     }
 
-    //Refresh color value preview
-    draw_grad_value(0, palette, selectedIndex);
-    draw_grad_value(1, palette, selectedIndex);
-    draw_grad_value(2, palette, selectedIndex);
+    return loadedFile;
 }
 
 //IRQ Handler, the only enabled interupt is vblank so this is fine
@@ -448,13 +442,13 @@ int clampi(int value, int min, int max)
 }
 
 //Expand the [0, 31] color channel range to the [0, 255] range used by the Austin Paint 2 standard
-int expandRange(int bitvalue)
+int expand_range(int bitvalue)
 {
     return bitvalue == 0 ? 0 : ((bitvalue + 1) * 8) - 1;
 }
 
 //Constrict the [0, 255] color channel range of Austin Paint 2 to the [0, 31] range used by Austin Paint Advance
-int constrictRange(int bitvalue)
+int constrict_range(int bitvalue)
 {
     return bitvalue == 0 ? 0 : ((bitvalue + 1) / 8) - 1;
 }
