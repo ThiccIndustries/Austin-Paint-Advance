@@ -1,3 +1,7 @@
+/*
+All the functions related to drawing to the bitmap be in here.
+*/
+
 #include "draw.h"
 
 void draw_pxl(int pxlx, int pxly, int bitmap[32][32], COLOR palette[16])

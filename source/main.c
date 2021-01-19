@@ -1,32 +1,48 @@
-/*Massive spaghetti dont read, if you want *real* comments, look in the header files*/
+/*
+Warning: 
+This code is held together with nothing but off-brand clear tape 
+and my desire to finish this stupid joke.
+
+Licensed under the: do-whatever-you-want-I-dont-care licence
+2020 Thicc Industries.
+*/
+
 #include "draw.h"
 #include "main.h"
 
-int frame;
+//Yeah this uses a stupid amount of globals for application state, deal with it.
 
-int cur_x = 0;
-int cur_y = 0;
-int selectedIndex = 0;
-int selectedChannel = 0;
+int frame; //Technically a frame counter, but gets reset a lot
 
-int cur_dx, cur_dy, chan_dv;
-int bitmap[32][32];
-COLOR palette[16];
+int cur_x = 0;  //Cursor position on the bitmap
+int cur_y = 0;  /*---------------------------*/
 
-bool blink;
-bool colormode;
+int selectedIndex = 0;      //Selected color in the palette. [0, 15]
+int selectedChannel = 0;    //Selected channel for colors.   [0, 3]
+
+int cur_dx; //How many spaces to move the cursor on the next MOVE_RATE 
+int cur_dy; /*------------------------------------------------------*/
+
+int chan_dv; //How many spaces to move the channel on the next MOVE_RATE
+
+int bitmap[32][32]; //Bitmap grid of color incidies
+COLOR palette[16];  //The color palette
+
+bool blink;     //Should blinking objects be displayed
+bool colormode; //Editing colors or bitmap (true : false)
 
 int main()
 {
-    init_vblank_irq();
-    init_color_palette();
+    init_vblank_irq();      //Init VBlank Interupt
+    init_color_palette();   //Populate palette array with default values
 
+    //Set display mode (Mode 3 Bitmap, BG layer 2)
     REG_DISPCNT = DCNT_MODE3 | DCNT_BG2;
 
-    //Draw borders
+    //Draw UI borders
     m3_fill(RGB15(2, 2, 2));
-    m3_rect(0, 0, 132, 144, RGB15(7, 7, 7)); //Bitmap border
-    m3_rect(0, 0, 128, 140, RGB15(2, 2, 2)); //Bitmap border
+    m3_rect(0, 0, 132, 144, RGB15(7, 7, 7));
+    m3_rect(0, 0, 128, 140, RGB15(2, 2, 2));
 
     m3_rect(128, 0, 240, 80, RGB15(7, 7, 7));
     m3_rect(132, 0, 240, 76, RGB15(2, 2, 2));
@@ -41,54 +57,56 @@ int main()
         }
     }
 
-    //Draw palette
+    //Draw palette selection
     for (int i = 0; i < 16; i++)
     {
         draw_pal_pxl(i, palette);
         draw_pal_select(i, RGB15(7, 7, 7));
     }
 
-    //Draw palette edit
-    draw_grad(0);
-    draw_grad(1);
-    draw_grad(2);
-    draw_grad_value(0, palette, selectedIndex);
-    draw_grad_value(1, palette, selectedIndex);
-    draw_grad_value(2, palette, selectedIndex);
+    //Draw color editor
+    draw_grad(0);   //Red gradient
+    draw_grad(1);   //Green gradient
+    draw_grad(2);   //Blue gradient
+    draw_grad_value(0, palette, selectedIndex); //Red selection
+    draw_grad_value(1, palette, selectedIndex); //Green selection
+    draw_grad_value(2, palette, selectedIndex); //Blue selection
     draw_grad_sel(0);
 
-    //This loop happens every frame
+    draw_pal_select(selectedIndex, RGB15(31, 31, 31)); //Draw palette indicator
+
+    //Loop every clock cycle
     while (1)
     {
-        key_poll();
+        key_poll(); //Poll inputs
 
-        if (key_hit(KEY_L))
+        if (key_hit(KEY_L)) //Change color left
         {
             draw_pal_select(selectedIndex, RGB15(7, 7, 7));
             selectedIndex = clampi(selectedIndex - 1, 0, 15);
             draw_grad_value(0, palette, selectedIndex);
             draw_grad_value(1, palette, selectedIndex);
             draw_grad_value(2, palette, selectedIndex);
+            draw_pal_select(selectedIndex, RGB15(31, 31, 31));
         }
 
-        if (key_hit(KEY_R))
+        if (key_hit(KEY_R)) //Change color right
         {
             draw_pal_select(selectedIndex, RGB15(7, 7, 7));
             selectedIndex = clampi(selectedIndex + 1, 0, 15);
             draw_grad_value(0, palette, selectedIndex);
             draw_grad_value(1, palette, selectedIndex);
             draw_grad_value(2, palette, selectedIndex);
+            draw_pal_select(selectedIndex, RGB15(31, 31, 31));
         }
-
-        draw_pal_select(selectedIndex, RGB15(31, 31, 31));
 
         if (colormode)
         {
-            input_color();
+            input_color();  //Run application cycle for color mode
         }
         else
         {
-            input_bitmap();
+            input_bitmap(); //Run application cycle for bitmap mode
         }
 
         if (key_hit(KEY_START))
@@ -98,23 +116,26 @@ int main()
         {
             APFILE *loadedFile = load();
 
+            //Load palette
             for (int i = 0; i < 16; i++)
             {
                 palette[i] = loadedFile -> palette[i];
                 draw_pal_pxl(i, palette);
             }
 
+            //Load bitmap
             for (int i = 0; i < 32 * 32; i++)
             {
                 bitmap[i % 32][i / 32] = loadedFile -> bitmap[i % 32][i / 32];
                 draw_pxl(i % 32, i / 32, bitmap, palette);
             }
 
-            //Refresh color value preview
+            //refresh color preview
             draw_grad_value(0, loadedFile->palette, selectedIndex);
             draw_grad_value(1, loadedFile->palette, selectedIndex);
             draw_grad_value(2, loadedFile->palette, selectedIndex);
 
+            //Free up memory
             free(loadedFile);
         }
     }
@@ -122,14 +143,14 @@ int main()
     return 0;
 }
 
-//no matter how much i use C, just up and writing to memory never sits right
 void save(COLOR palette[16], int bitmap[32][32])
 {
     //Save memory location
     u8 *pSaveMemory = ((u8 *)0x0E000000);
 
     //Write austin paint header
-    char header[16] = {0x41, 0x55, 0x53, 0x54, 0x49, 0x4E, 0x50, 0x41, 0x49, 0x4E, 0x54, 0x00, 0x56, 0x32, 0x2E, 0x30};
+    char header[16] =  {0x41, 0x55, 0x53, 0x54, 0x49, 0x4E, 0x50, 0x41,
+                        0x49, 0x4E, 0x54, 0x00, 0x56, 0x32, 0x2E, 0x30};
     for (int i = 0; i < 16; i++)
     {
         pSaveMemory[i] = header[i];
@@ -137,14 +158,15 @@ void save(COLOR palette[16], int bitmap[32][32])
     //save palette
     for (int i = 0; i < 16 * 3; i += 3)
     {
+        //Make compadible with AP2 color space
         int blu = expand_range((palette[i / 3] & 0x7C00) >> 10);
         int grn = expand_range((palette[i / 3] & 0x03E0) >> 5);
         int red = expand_range((palette[i / 3] & 0x001F));
 
-        //Make compadible with AP2 color space
-        pSaveMemory[i + 16] = red;
+        
+        pSaveMemory[i + 16 + 0] = red;
         pSaveMemory[i + 16 + 1] = grn;
-        pSaveMemory[i + 16+ 2] = blu;
+        pSaveMemory[i + 16 + 2] = blu;
     }
 
     for (int y = 0; y < 32; y++)
@@ -160,12 +182,11 @@ void save(COLOR palette[16], int bitmap[32][32])
     }
 }
 
-APFILE* load()
+APFILE* load(void)
 {
     //Save memory location
     u8 *pSaveMemory = ((u8 *)0x0E000000);
-
-    APFILE *loadedFile = malloc(sizeof(APFILE));
+    APFILE *loadedFile = malloc( sizeof(APFILE) );
 
     for (int i = 0; i < 16 * 3; i += 3)
     {
@@ -195,7 +216,6 @@ APFILE* load()
     return loadedFile;
 }
 
-//IRQ Handler, the only enabled interupt is vblank so this is fine
 void on_irq(void)
 {
     REG_IF = IRQ_VBLANK;
@@ -212,7 +232,6 @@ void on_irq(void)
     frame++;
 }
 
-//Enable vblank interupt
 void init_vblank_irq(void)
 {
     REG_IME = 0x00;
@@ -222,7 +241,6 @@ void init_vblank_irq(void)
     REG_IME = 0x01;
 }
 
-//Fill the color palette with the default. this is dumb
 void init_color_palette(void)
 {
     palette[0] = RGB15(0, 0, 0);
@@ -243,7 +261,6 @@ void init_color_palette(void)
     palette[15] = RGB15(15, 0, 15);
 }
 
-//Color screen input
 void input_color(void)
 {
     if (key_hit(KEY_DOWN))
@@ -293,7 +310,6 @@ void input_color(void)
     }
 }
 
-//Bitmap input
 void input_bitmap(void)
 {
     if (key_is_down(KEY_A))
@@ -335,7 +351,7 @@ void input_bitmap(void)
         frame = 1;
     }
 
-    //Repeats
+    //Repeat movements
     if (key_is_down(KEY_UP))
         cur_dy = -1;
 
@@ -354,7 +370,6 @@ void input_bitmap(void)
     }
 }
 
-//This runs on every new frame
 void input_color_vblank(void)
 {
 
@@ -366,30 +381,6 @@ void input_color_vblank(void)
     chan_dv = 0;
 }
 
-
-
-void modify_color_channel(int dv, int channel, int index){
-    int blu = (palette[index] & 0x7C00) >> 10;
-    int grn = (palette[index] & 0x03E0) >> 5;
-    int red = (palette[index] & 0x001F);
-
-    switch (channel)
-    {
-    case 0:
-        red = clampi(red + dv, 0, 31);
-        break;
-    case 1:
-        grn = clampi(grn + dv, 0, 31);
-        break;
-    case 2:
-        blu = clampi(blu + dv, 0, 31);
-        break;
-    }
-
-    palette[index] = RGB15(red, grn, blu);
-}
-
-//This runs on every new frame
 void input_bitmap_vblank(void)
 {
 
@@ -429,7 +420,27 @@ void input_bitmap_vblank(void)
         blink = !blink;
 }
 
-//Clamp a value to specified max and min
+void modify_color_channel(int dv, int channel, int index){
+    int blu = (palette[index] & 0x7C00) >> 10;
+    int grn = (palette[index] & 0x03E0) >> 5;
+    int red = (palette[index] & 0x001F);
+
+    switch (channel)
+    {
+    case 0:
+        red = clampi(red + dv, 0, 31);
+        break;
+    case 1:
+        grn = clampi(grn + dv, 0, 31);
+        break;
+    case 2:
+        blu = clampi(blu + dv, 0, 31);
+        break;
+    }
+
+    palette[index] = RGB15(red, grn, blu);
+}
+
 int clampi(int value, int min, int max)
 {
     if (value > max)
@@ -441,13 +452,11 @@ int clampi(int value, int min, int max)
     return value;
 }
 
-//Expand the [0, 31] color channel range to the [0, 255] range used by the Austin Paint 2 standard
 int expand_range(int bitvalue)
 {
     return bitvalue == 0 ? 0 : ((bitvalue + 1) * 8) - 1;
 }
 
-//Constrict the [0, 255] color channel range of Austin Paint 2 to the [0, 31] range used by Austin Paint Advance
 int constrict_range(int bitvalue)
 {
     return bitvalue == 0 ? 0 : ((bitvalue + 1) / 8) - 1;

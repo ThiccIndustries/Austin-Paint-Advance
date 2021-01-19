@@ -6,12 +6,11 @@
 #define MOVE_RATE 10    //How many frames per movement on held movements, applies to both bitmap field and color editor
 
 /*Helper functions*/
-
 int clampi(int value, int min, int max);                    //Clamp integer value to specified min and max
 int expand_range(int bitvalue);                             //Expand a [0, 31] value to a [0, 255] value
 int constrict_range(int bitvalue);                          //Compress a [0, 255] value to a [0, 31] value
-void init_color_palette(void);                              //Creates default values inside Palette
 void modify_color_channel(int dv, int channel, int index);  //Modify the value of a color channel
+void init_color_palette(void);                              //Creates default values inside Palette
 
 /*Interupt functions*/
 void on_irq(void);              //VBlank interupt callback
@@ -24,7 +23,6 @@ void input_bitmap_vblank(void); //Input bitmap (Every VBlank)
 void input_color_vblank(void);  //Input color field (Every VBlank)
 
 /*Memory functions*/
-
 typedef struct {
     int bitmap[32][32];
     COLOR palette[16];
