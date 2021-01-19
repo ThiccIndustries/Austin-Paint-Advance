@@ -31,14 +31,12 @@ int cur_y = 0;
 int selectedIndex = 0;
 int selectedChannel = 0;
 
-int cur_dx, cur_dy;
+int cur_dx, cur_dy, chan_dv;
 int bitmap[32][32];
 COLOR palette[16];
 
 bool blink;
 bool colormode;
-
-#define GAMEPAK_RAM ((u8 *)0x0E000000)
 
 int main()
 {
@@ -128,7 +126,8 @@ int main()
 //no matter how much i use C, just up and writing to memory never sits right
 void save(COLOR palette[16], int bitmap[32][32])
 {
-    u8 *pSaveMemory = GAMEPAK_RAM;
+    //Save memory location
+    u8 *pSaveMemory = ((u8 *)0x0E000000);
 
     //Write austin paint header
     char header[16] = {0x41, 0x55, 0x53, 0x54, 0x49, 0x4E, 0x50, 0x41, 0x49, 0x4E, 0x54, 0x00, 0x56, 0x32, 0x2E, 0x30};
@@ -146,7 +145,7 @@ void save(COLOR palette[16], int bitmap[32][32])
         //Make compadible with AP2 color space
         pSaveMemory[i + 16] = red;
         pSaveMemory[i + 16 + 1] = grn;
-        pSaveMemory[i + 16 + 2] = blu;
+        pSaveMemory[i + 16+ 2] = blu;
     }
 
     for (int y = 0; y < 32; y++)
@@ -164,7 +163,8 @@ void save(COLOR palette[16], int bitmap[32][32])
 
 void load()
 {
-    u8 *pSaveMemory = GAMEPAK_RAM;
+    //Save memory location
+    u8 *pSaveMemory = ((u8 *)0x0E000000);
 
     for (int i = 0; i < 16 * 3; i += 3)
     {
@@ -176,9 +176,6 @@ void load()
 
         palette[i / 3] = RGB15(red, grn, blu);
         draw_pal_pxl(i / 3, palette);
-        draw_grad_value(0, palette, i / 3);
-        draw_grad_value(1, palette, i / 3);
-        draw_grad_value(2, palette, i / 3);
     }
 
     for (int y = 0; y < 32; y++)
@@ -197,6 +194,11 @@ void load()
             draw_pxl((x * 2) + 1, y, bitmap, palette);
         }
     }
+
+    //Refresh color value preview
+    draw_grad_value(0, palette, selectedIndex);
+    draw_grad_value(1, palette, selectedIndex);
+    draw_grad_value(2, palette, selectedIndex);
 }
 
 //IRQ Handler, the only enabled interupt is vblank so this is fine
@@ -261,53 +263,28 @@ void input_color(void)
         draw_grad_sel(selectedChannel);
     }
 
-    if (key_hit(KEY_LEFT))
-    {
-        int blu = (palette[selectedIndex] & 0x7C00) >> 10;
-        int grn = (palette[selectedIndex] & 0x03E0) >> 5;
-        int red = (palette[selectedIndex] & 0x001F);
-
-        switch (selectedChannel)
-        {
-        case 0:
-            red = clampi(red - 1, 0, 31);
-            break;
-        case 1:
-            grn = clampi(grn - 1, 0, 31);
-            break;
-        case 2:
-            blu = clampi(blu - 1, 0, 31);
-            break;
-        }
-
-        palette[selectedIndex] = RGB15(red, grn, blu);
-        draw_grad_value(selectedChannel, palette, selectedIndex);
-        draw_pal_pxl(selectedIndex, palette);
+    if(key_hit(KEY_LEFT)){
+        modify_color_channel(-1, selectedChannel, selectedIndex);
+        frame = 1; //Stupid hack to prevent double inputs
     }
 
-    if (key_hit(KEY_RIGHT))
-    {
-        int blu = (palette[selectedIndex] & 0x7C00) >> 10;
-        int grn = (palette[selectedIndex] & 0x03E0) >> 5;
-        int red = (palette[selectedIndex] & 0x001F);
-
-        switch (selectedChannel)
-        {
-        case 0:
-            red = clampi(red + 1, 0, 31);
-            break;
-        case 1:
-            grn = clampi(grn + 1, 0, 31);
-            break;
-        case 2:
-            blu = clampi(blu + 1, 0, 31);
-            break;
-        }
-
-        palette[selectedIndex] = RGB15(red, grn, blu);
-        draw_grad_value(selectedChannel, palette, selectedIndex);
-        draw_pal_pxl(selectedIndex, palette);
+    if(key_hit(KEY_RIGHT)){
+        modify_color_channel(1, selectedChannel, selectedIndex);
+        frame = 1; //Stupid hack to prevent double inputs
     }
+
+
+    if(key_is_down(KEY_LEFT)){
+        chan_dv = -1;
+    }
+
+    if(key_is_down(KEY_RIGHT)){
+        chan_dv = 1;
+    }
+
+    //Its really stupid that this needs to be here, and i have literally no idea why it crashes when put where it SHOULD be
+    draw_grad_value(selectedChannel, palette, selectedIndex);
+    draw_pal_pxl(selectedIndex, palette);
 
     if (key_hit(KEY_B))
     {
@@ -331,11 +308,40 @@ void input_bitmap(void)
         draw_pxl(cur_x, cur_y, bitmap, palette);
     }
 
-    if (key_hit(KEY_UP) || key_hit(KEY_DOWN) || key_hit(KEY_RIGHT) || key_hit(KEY_LEFT))
+    //Single hit
+    if (key_hit(KEY_UP))
     {
+        draw_pxl(cur_x, cur_y, bitmap, palette);
+        cur_y = clampi(cur_y - 1, 0, 31);
+        blink = true;
         frame = 1;
     }
 
+    if (key_hit(KEY_DOWN))
+    {
+        draw_pxl(cur_x, cur_y, bitmap, palette);
+        cur_y = clampi(cur_y + 1, 0, 31);
+        blink = true;
+        frame = 1;
+    }
+
+    if (key_hit(KEY_RIGHT))
+    {
+        draw_pxl(cur_x, cur_y, bitmap, palette);
+        cur_x = clampi(cur_x + 1, 0, 31);
+        blink = true;
+        frame = 1;
+    }
+
+    if (key_hit(KEY_LEFT))
+    {
+        draw_pxl(cur_x, cur_y, bitmap, palette);
+        cur_x = clampi(cur_x - 1, 0, 31);
+        blink = true;
+        frame = 1;
+    }
+
+    //Repeats
     if (key_is_down(KEY_UP))
         cur_dy = -1;
 
@@ -357,6 +363,36 @@ void input_bitmap(void)
 //This runs on every new frame
 void input_color_vblank(void)
 {
+
+    if (frame % MOVE_RATE == 0)
+    {
+        modify_color_channel(chan_dv, selectedChannel, selectedIndex);
+    }
+
+    chan_dv = 0;
+}
+
+
+
+void modify_color_channel(int dv, int channel, int index){
+    int blu = (palette[index] & 0x7C00) >> 10;
+    int grn = (palette[index] & 0x03E0) >> 5;
+    int red = (palette[index] & 0x001F);
+
+    switch (channel)
+    {
+    case 0:
+        red = clampi(red + dv, 0, 31);
+        break;
+    case 1:
+        grn = clampi(grn + dv, 0, 31);
+        break;
+    case 2:
+        blu = clampi(blu + dv, 0, 31);
+        break;
+    }
+
+    palette[index] = RGB15(red, grn, blu);
 }
 
 //This runs on every new frame
@@ -368,12 +404,11 @@ void input_bitmap_vblank(void)
         draw_pxl(cur_x, cur_y, bitmap, palette);
         cur_x = clampi(cur_x + cur_dx, 0, 31);
         cur_y = clampi(cur_y + cur_dy, 0, 31);
-
-        cur_dx = 0;
-        cur_dy = 0;
-
         blink = true;
     }
+    
+    cur_dx = 0;
+    cur_dy = 0;
 
     //draw the pixel under the cursor on the falling frame of blink
     if ((frame - 1) % BLINK_RATE == 0 && !blink)
@@ -383,6 +418,15 @@ void input_bitmap_vblank(void)
     //Draw the cursor if blinking
     if (blink)
     {
+        //Warning: this is dumb
+
+        for(int x = -1; x < 1; x++){
+            for(int y = -1; y < 1; y++){
+                draw_pxl( clampi(cur_x + x, 0, 31),
+                          clampi(cur_y + y, 0, 31), 
+                          bitmap, palette);
+            }
+        }
         draw_cursor(cur_x, cur_y, RGB15(15, 15, 15));
     }
 
