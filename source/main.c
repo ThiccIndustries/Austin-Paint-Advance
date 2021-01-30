@@ -75,7 +75,7 @@ int main()
 
     draw_pal_select(selectedIndex, RGB15(31, 31, 31)); //Draw palette indicator
 
-    //Loop every clock cycle
+    //Loop every tick
     while (1)
     {
         key_poll(); //Poll inputs
