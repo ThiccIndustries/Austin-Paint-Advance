@@ -9,4 +9,7 @@ The rom is literally right there come on. <br>If you really gotta be *that guy*,
 * A - Paint on bitmap
 * B - Change modes
 * DPAD - Move cursor on bitmap or move color editing screen
+* Select - Load file
+* Start - Save file
 
+Note: To load a .ap2 file into Austin Paint Advance, just rename the file to .sav and put it with the rom
